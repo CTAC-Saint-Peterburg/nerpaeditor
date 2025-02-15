@@ -2,22 +2,24 @@ import { useState, useRef } from "react";
 import { ButtonGroup, Button, TextField, Box, Select, MenuItem, FormControl, InputLabel, Typography, TextareaAutosize } from "@mui/material";
 import Canvas from "./components/Canvas";
 import { CalendarViewMonthRounded, DoorSliding, EmojiPeople, GppBad, Inventory, Settings, Save } from "@mui/icons-material";
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'; // Импортируем иконку
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 function App() {
   const [color, setColor] = useState('red');
   const [size, setSize] = useState(1);
-  const [filledSquares, setFilledSquares] = useState([]); // Массив всех закрашенных квадратов
-  const [widthInput, setWidthInput] = useState(1); // Состояние для ширины
-  const [heightInput, setHeightInput] = useState(1); // Состояние для высоты
-  const [layer, setLayer] = useState(1); // Состояние для выбранного слоя (z)
-  const [name, setName] = useState(''); // Имя квадрата (для слоев 1 и 2)
-  const [config, setConfig] = useState(''); // Конфиг для квадрата
-  const [lastSquareInfo, setLastSquareInfo] = useState(''); // Информация о последнем добавленном квадрате
-  const [customColor, setCustomColor] = useState(''); // Кастомный цвет
-  const [isCustomMode, setIsCustomMode] = useState(false); // Режим кастомного цвета
+  const [filledSquares, setFilledSquares] = useState([]);
+  const [widthInput, setWidthInput] = useState(1);
+  const [heightInput, setHeightInput] = useState(1);
+  const [layer, setLayer] = useState(1);
+  const [name, setName] = useState('');
+  const [config, setConfig] = useState('');
+  const [lastSquareInfo, setLastSquareInfo] = useState('');
+  const [customColor, setCustomColor] = useState('');
+  const [isCustomMode, setIsCustomMode] = useState(false);
+  const [selectedSquareToDelete, setSelectedSquareToDelete] = useState(null);
+  const [squareNumbers, setSquareNumbers] = useState([]);
 
-  // Настройки игры
+  // Инициализация состояния gameSettings
   const [gameSettings, setGameSettings] = useState({
     playerCount: 0,
     peacefulPlayers: 0,
@@ -30,28 +32,25 @@ function App() {
     attackCooldown: 0,
   });
 
-  const canvasRef = useRef(); // Ref для компонента Canvas
+  const canvasRef = useRef();
 
-  // Обработчик закрашивания квадрата
   const handleSquareFill = (color, x, y, size, layer, name, config) => {
-    const newSquare = { color, x, y, size, layer, name, config }; // Создаем новый квадрат
-    setFilledSquares(prev => [...prev, newSquare]); // Добавляем квадрат в массив
+    const newSquare = { color, x, y, size, layer, name, config, number: squareNumbers.length + 1 };
+    setFilledSquares(prev => [...prev, newSquare]);
+    setSquareNumbers(prev => [...prev, newSquare.number]);
 
-    // Обновляем информацию о последнем добавленном квадрате
     setLastSquareInfo(
-      `Последний квадрат: Цвет - ${color}, Размер - ${size.width || size}x${size.height || size}, Слой - ${layer}, Имя - ${name || 'нет'}`
+      `Последний квадрат: Цвет - ${color}, Размер - ${size.width || size}x${size.height || size}, Слой - ${layer}, Имя - ${name || 'нет'}, Номер - ${newSquare.number}`
     );
 
-    // Сбрасываем поля имени и конфига
     setName('');
     setConfig('');
   };
 
-  // Обработчик сохранения данных
   const handleSave = () => {
     const dataToSave = {
-      squares: filledSquares, // Все квадраты
-      settings: gameSettings, // Настройки игры
+      squares: filledSquares,
+      settings: gameSettings,
     };
     const dataStr = JSON.stringify(dataToSave, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
@@ -66,7 +65,6 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
-  // Обработчик загрузки данных
   const handleUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -74,10 +72,10 @@ function App() {
       reader.onload = (e) => {
         try {
           const jsonData = JSON.parse(e.target.result);
-          setFilledSquares(jsonData.squares || []); // Загружаем квадраты
-          setGameSettings(jsonData.settings || {}); // Загружаем настройки
+          setFilledSquares(jsonData.squares || []);
+          setGameSettings(jsonData.settings || {});
           if (canvasRef.current) {
-            canvasRef.current.drawFilledSquares(); // Перерисовываем холст
+            canvasRef.current.drawFilledSquares();
           }
         } catch (error) {
           console.error("Invalid JSON format", error);
@@ -87,56 +85,65 @@ function App() {
     }
   };
 
-  // Обработчик удаления последнего квадрата на текущем слое
-  const handleRemoveLastSquare = () => {
-    setFilledSquares(prev => {
-      // Находим индекс последнего квадрата на текущем слое
-      const lastIndex = prev.map((square, index) => ({ ...square, index }))
-        .filter(square => square.layer === layer)
-        .pop()?.index;
+  const handleRemoveSquare = () => {
+    if (selectedSquareToDelete !== null) {
+      setFilledSquares(prev => {
+        const updatedSquares = prev.filter(square => square.number !== selectedSquareToDelete);
+        return updatedSquares.map((square, index) => ({ ...square, number: index + 1 }));
+      });
 
-      if (lastIndex !== undefined) {
-        return prev.filter((_, index) => index !== lastIndex); // Удаляем квадрат по индексу
+      setSquareNumbers(prev => prev.filter(num => num !== selectedSquareToDelete).map((num, index) => index + 1));
+      setSelectedSquareToDelete(null);
+
+      if (canvasRef.current) {
+        canvasRef.current.drawFilledSquares();
       }
-      return prev; // Если квадратов на слое нет, возвращаем исходный массив
-    });
-
-    if (canvasRef.current) {
-      canvasRef.current.drawFilledSquares(); // Перерисовываем холст
     }
   };
 
-  // Обработчик удаления всех квадратов
   const handleRemoveAllSquares = () => {
-    setFilledSquares([]); // Очищаем массив квадратов
+    setFilledSquares([]);
+    setSquareNumbers([]);
     if (canvasRef.current) {
-      canvasRef.current.drawFilledSquares(); // Перерисовываем холст
+      canvasRef.current.drawFilledSquares();
     }
   };
 
-  // Обработчик применения размера
   const handleApplySize = () => {
-    setSize({ width: widthInput, height: heightInput }); // Устанавливаем новый размер
+    setSize({ width: widthInput, height: heightInput });
   };
 
-  // Обработчик изменения слоя
   const handleLayerChange = (event) => {
     const selectedLayer = event.target.value;
     setLayer(selectedLayer);
 
-    // Устанавливаем цвет по умолчанию в зависимости от слоя
-    if (selectedLayer === 3) {
-      setColor('gray'); // Серый для слоя 3
-    } else {
-      setColor('red'); // Красный для слоев 1 и 2
+    switch (selectedLayer) {
+      case 1:
+        setColor('red');
+        break;
+      case 2:
+        setColor('blue');
+        break;
+      case 3:
+        setColor('green');
+        break;
+      case 4:
+        setColor('yellow');
+        break;
+      case 5:
+        setColor('purple');
+        break;
+      case 6:
+        setColor('gray');
+        break;
+      default:
+        setColor('red');
     }
 
-    // Сбрасываем кастомный цвет при изменении слоя
     setCustomColor('');
     setIsCustomMode(false);
   };
 
-  // Обработчик изменения настроек игры
   const handleGameSettingChange = (key, value) => {
     setGameSettings(prev => ({
       ...prev,
@@ -144,24 +151,21 @@ function App() {
     }));
   };
 
-  // Обработчик включения/выключения кастомного режима
   const handleCustomMode = () => {
     setIsCustomMode(!isCustomMode);
     if (!isCustomMode) {
-      setCustomColor(''); // Сбрасываем кастомный цвет при включении режима
+      setCustomColor('');
     }
   };
 
-  // Обработчик применения кастомного цвета
   const handleApplyCustomColor = () => {
     if (customColor) {
-      setColor(customColor); // Устанавливаем кастомный цвет
+      setColor(customColor);
     }
   };
 
   return (
     <>
-      {/* Блок настроек игры */}
       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
         <Typography>Загрузить конфиг</Typography>
         <input type="file" accept=".json" onChange={handleUpload} title="Загрузить конфиг" />
@@ -229,21 +233,19 @@ function App() {
         </Box>
       </Box>
 
-      {/* Информация о последнем добавленном квадрате */}
       <Typography variant="body1" sx={{ marginTop: 2 }}>
         {lastSquareInfo}
       </Typography>
 
       <ButtonGroup>
-        <Button startIcon={<Inventory />} onClick={() => { setColor('red'); setIsCustomMode(false); }} disabled={layer === 3}>Сундук (красный)</Button>
-        <Button startIcon={<CalendarViewMonthRounded />} onClick={() => { setColor('blue'); setIsCustomMode(false); }} disabled={layer === 3}>Клетка (синий)</Button>
-        <Button startIcon={<DoorSliding />} onClick={() => { setColor('green'); setIsCustomMode(false); }} disabled={layer === 3}>Точка эвакуации (зеленый)</Button>
-        <Button startIcon={<EmojiPeople />} onClick={() => { setColor('gray'); setIsCustomMode(false); }} disabled={layer !== 3}>Точка спавна (серый)</Button>
-        <Button startIcon={<GppBad />} onClick={() => { setColor('black'); setIsCustomMode(false); }} disabled={layer !== 3}>Коллизия (черный)</Button>
+        <Button startIcon={<Inventory />} onClick={() => { setColor('red'); setIsCustomMode(false); }} disabled={layer === 6}>Сундук (красный)</Button>
+        <Button startIcon={<CalendarViewMonthRounded />} onClick={() => { setColor('blue'); setIsCustomMode(false); }} disabled={layer === 6}>Клетка (синий)</Button>
+        <Button startIcon={<DoorSliding />} onClick={() => { setColor('green'); setIsCustomMode(false); }} disabled={layer === 6}>Точка эвакуации (зеленый)</Button>
+        <Button startIcon={<EmojiPeople />} onClick={() => { setColor('gray'); setIsCustomMode(false); }} disabled={layer !== 6}>Точка спавна (серый)</Button>
+        <Button startIcon={<GppBad />} onClick={() => { setColor('black'); setIsCustomMode(false); }} disabled={layer !== 6}>Коллизия (черный)</Button>
         <Button startIcon={<AutoAwesomeIcon />} onClick={handleCustomMode}>Кастом</Button>
       </ButtonGroup>
 
-      {/* Поля для кастомного цвета */}
       {isCustomMode && (
         <Box sx={{ marginTop: 2 }}>
           <TextField
@@ -262,14 +264,13 @@ function App() {
         <Button onClick={() => setSize(1)}>Размер 1</Button>
         <Button onClick={() => setSize(2)}>Размер 2</Button>
       </ButtonGroup>
-      <Button variant="contained" color="secondary" onClick={handleRemoveLastSquare}>
-        Удалить последний квадрат
+      <Button variant="contained" color="secondary" onClick={handleRemoveSquare}>
+        Удалить выбранный квадрат
       </Button>
       <Button variant="contained" color="error" onClick={handleRemoveAllSquares}>
         Удалить всё
       </Button>
 
-      {/* Поля ввода для ширины и высоты */}
       <Box sx={{ marginTop: 2 }}>
         <TextField
           label="Ширина"
@@ -289,8 +290,23 @@ function App() {
           Применить размер
         </Button>
       </Box>
+      <Box sx={{ marginTop: 2 }}>
+        <FormControl fullWidth>
+          <InputLabel>Выберите квадрат для удаления</InputLabel>
+          <Select
+            value={selectedSquareToDelete || ''}
+            label="Выберите квадрат для удаления"
+            onChange={(e) => setSelectedSquareToDelete(e.target.value)}
+          >
+            {squareNumbers.map(num => (
+              <MenuItem key={num} value={num}>
+                Квадрат {num}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
-      {/* Поле ввода имени */}
       {layer !== 3 && (
         <Box sx={{ marginTop: 2 }}>
           <TextField
@@ -302,7 +318,6 @@ function App() {
         </Box>
       )}
 
-      {/* Textarea для конфига */}
       <Box sx={{ marginTop: 2 }}>
         <TextareaAutosize
           minRows={3}
@@ -313,7 +328,7 @@ function App() {
         />
       </Box>
 
-      {/* Выбор слоя */}
+
       <Box sx={{ marginTop: 2 }}>
         <FormControl fullWidth>
           <InputLabel>Слой (Z)</InputLabel>
@@ -324,7 +339,10 @@ function App() {
           >
             <MenuItem value={1}>Слой 1 (Основной)</MenuItem>
             <MenuItem value={2}>Слой 2 (Дополнительный)</MenuItem>
-            <MenuItem value={3}>Слой 3 (Коллизии и спавн)</MenuItem>
+            <MenuItem value={3}>Слой 3 (Дополнительный)</MenuItem>
+            <MenuItem value={4}>Слой 4 (Дополнительный)</MenuItem>
+            <MenuItem value={5}>Слой 5 (Дополнительный)</MenuItem>
+            <MenuItem value={6}>Слой 6 (Коллизии и спавн)</MenuItem>
           </Select>
         </FormControl>
       </Box>
@@ -333,13 +351,12 @@ function App() {
         Сохранить JSON
       </Button>
 
-      {/* Компонент Canvas */}
       <Canvas
         ref={canvasRef}
         fillColor={color}
         size={size}
-        onSquareFill={(color, x, y, size) => handleSquareFill(color, x, y, size, layer, name, config)} // Передаем слой, имя и конфиг
-        filledSquares={filledSquares.filter(square => square.layer === layer)} // Фильтруем квадраты по слою
+        onSquareFill={(color, x, y, size) => handleSquareFill(color, x, y, size, layer, name, config)}
+        filledSquares={filledSquares.filter(square => square.layer === layer)}
       />
     </>
   );

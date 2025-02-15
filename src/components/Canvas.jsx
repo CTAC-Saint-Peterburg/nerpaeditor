@@ -2,95 +2,132 @@ import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react
 
 const Canvas = forwardRef(({ fillColor, size, onSquareFill, filledSquares }, ref) => {
     const canvasRef = useRef(null);
-    const gridSize = 60; // Размер одной клетки
-    const canvasSize = 3000; // Размер холста
+    const gridSize = 60;
+    const canvasSize = 3000;
+    const rulerSize = 40; // Размер линейки (высота для X, ширина для Y)
     const contextRef = useRef(null);
 
-    // Методы, доступные родительскому компоненту
     useImperativeHandle(ref, () => ({
         clearCanvas() {
             const context = contextRef.current;
-            context.clearRect(0, 0, canvasSize, canvasSize); // Очищаем холст
-            drawGrid(); // Перерисовываем сетку
-            drawFilledSquares(); // Перерисовываем квадраты
+            context.clearRect(0, 0, canvasSize + rulerSize, canvasSize + rulerSize);
+            drawFilledSquares();
+            drawGrid();
+            drawRulers();
         },
         drawFilledSquares() {
-            drawFilledSquares(); // Перерисовываем квадраты
+            drawFilledSquares();
         }
     }));
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        canvas.width = canvasSize;
-        canvas.height = canvasSize;
+        canvas.width = canvasSize + rulerSize; // Увеличиваем ширину для линейки Y
+        canvas.height = canvasSize + rulerSize; // Увеличиваем высоту для линейки X
         contextRef.current = canvas.getContext('2d');
-        drawGrid(); // Рисуем сетку при инициализации
-        drawFilledSquares(); // Рисуем квадраты при инициализации
+        drawFilledSquares();
+        drawGrid();
+        drawRulers(); // Отрисовываем линейки
     }, [canvasSize]);
 
     useEffect(() => {
-        drawFilledSquares(); // Перерисовываем квадраты при изменении filledSquares
+        drawFilledSquares();
+        drawGrid();
+        drawRulers(); // Отрисовываем линейки при изменении filledSquares
     }, [filledSquares]);
 
-    // Рисуем сетку
+    // Отрисовка сетки
     const drawGrid = () => {
         const context = contextRef.current;
-        context.clearRect(0, 0, canvasSize, canvasSize); // Очищаем холст
-        context.strokeStyle = 'lightgray'; // Цвет линий сетки
+        context.strokeStyle = 'lightgray';
         context.lineWidth = 1;
 
-        for (let x = 0; x <= canvasSize; x += gridSize) {
-            context.moveTo(x, 0);
-            context.lineTo(x, canvasSize);
+        // Отрисовка вертикальных линий
+        for (let x = rulerSize; x <= canvasSize + rulerSize; x += gridSize) {
+            context.moveTo(x, rulerSize);
+            context.lineTo(x, canvasSize + rulerSize);
         }
 
-        for (let y = 0; y <= canvasSize; y += gridSize) {
-            context.moveTo(0, y);
-            context.lineTo(canvasSize, y);
+        // Отрисовка горизонтальных линий
+        for (let y = rulerSize; y <= canvasSize + rulerSize; y += gridSize) {
+            context.moveTo(rulerSize, y);
+            context.lineTo(canvasSize + rulerSize, y);
         }
 
         context.stroke();
+    };
+
+    // Отрисовка линеек
+    const drawRulers = () => {
+        const context = contextRef.current;
+        context.fillStyle = 'black';
+        context.font = '14px Arial';
+        context.textAlign = 'center';
+
+        // Линейка по оси X (верхняя)
+        for (let x = rulerSize; x <= canvasSize + rulerSize; x += gridSize) {
+            const cellNumber = (x - rulerSize) / gridSize;
+            context.fillText(cellNumber.toString(), x + gridSize / 2, rulerSize / 2 + 5);
+        }
+
+        // Линейка по оси Y (левая)
+        context.save();
+        context.translate(0, rulerSize);
+        context.rotate(-Math.PI / 2); // Поворачиваем текст на 90 градусов
+        for (let y = rulerSize; y <= canvasSize + rulerSize; y += gridSize) {
+            const cellNumber = (y - rulerSize) / gridSize;
+            context.fillText(cellNumber.toString(), -y + gridSize / 2, rulerSize / 2 + 5);
+        }
+        context.restore();
     };
 
     // Обработчик клика по холсту
     const handleClick = (event) => {
         const canvas = canvasRef.current;
         const rect = canvas.getBoundingClientRect();
-        const x = Math.floor((event.clientX - rect.left) / gridSize) * gridSize;
-        const y = Math.floor((event.clientY - rect.top) / gridSize) * gridSize;
+        const x = Math.floor((event.clientX - rect.left - rulerSize) / gridSize) * gridSize + rulerSize;
+        const y = Math.floor((event.clientY - rect.top - rulerSize) / gridSize) * gridSize + rulerSize;
 
-        fillSquare(x, y);
-
-        // Передаем информацию о квадрате в родительский компонент
-        onSquareFill(fillColor, x / gridSize, y / gridSize, size);
+        if (x >= rulerSize && y >= rulerSize) { // Игнорируем клики по линейкам
+            fillSquare(x, y);
+            onSquareFill(fillColor, (x - rulerSize) / gridSize, (y - rulerSize) / gridSize, size);
+        }
     };
 
-    // Закрашиваем квадрат
+    // Закрашивание квадрата
     const fillSquare = (x, y) => {
         const context = contextRef.current;
-        context.fillStyle = fillColor; // Цвет заливки
+        context.fillStyle = fillColor;
         context.fillRect(
             x,
             y,
-            gridSize * (size.width || size), // Ширина
-            gridSize * (size.height || size) // Высота
+            gridSize * (size.width || size),
+            gridSize * (size.height || size)
         );
     };
 
-    // Рисуем все закрашенные квадраты
+    // Отрисовка всех закрашенных квадратов
     const drawFilledSquares = () => {
         const context = contextRef.current;
-        context.clearRect(0, 0, canvasSize, canvasSize); // Очищаем холст
-        drawGrid(); // Рисуем сетку
+        context.clearRect(0, 0, canvasSize + rulerSize, canvasSize + rulerSize);
 
-        // Рисуем квадраты, которые относятся к текущему слою
-        filledSquares.forEach(({ color, x, y, size }) => {
-            context.fillStyle = color; // Цвет заливки
+        // Отрисовка квадратов
+        filledSquares.forEach(({ color, x, y, size, number }) => {
+            context.fillStyle = color;
             context.fillRect(
-                x * gridSize,
-                y * gridSize,
-                gridSize * (size.width || size), // Ширина
-                gridSize * (size.height || size) // Высота
+                x * gridSize + rulerSize,
+                y * gridSize + rulerSize,
+                gridSize * (size.width || size),
+                gridSize * (size.height || size)
+            );
+
+            // Отрисовка номера квадрата
+            context.fillStyle = 'white';
+            context.font = '20px Arial';
+            context.fillText(
+                number.toString(),
+                x * gridSize + rulerSize + 5,
+                y * gridSize + rulerSize + 25
             );
         });
     };
