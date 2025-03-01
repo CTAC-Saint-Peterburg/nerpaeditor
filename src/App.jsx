@@ -33,6 +33,7 @@ function App() {
   const [isCustomMode, setIsCustomMode] = useState(false);
   const [selectedSquareToDelete, setSelectedSquareToDelete] = useState(null);
   const [squareNumbers, setSquareNumbers] = useState([]);
+  const [type, setType] = useState("");
 
 
   // Инициализация состояния gameSettings
@@ -59,6 +60,7 @@ function App() {
       layer,
       name,
       config,
+      type,
       number: squareNumbers.length + 1,
     };
     setFilledSquares((prev) => [...prev, newSquare]);
@@ -74,6 +76,7 @@ function App() {
 
     setName("");
     setConfig("");
+    setType("");
   };
 
   const handleSave = () => {
@@ -300,6 +303,11 @@ function App() {
       setName={setName}
       isCustomMode={isCustomMode}
       handleApplySize={handleApplySize}
+      type={type}
+      setType={setType}
+      customColor={customColor}
+      setCustomColor={setCustomColor}
+      handleApplyCustomColor={handleApplyCustomColor}
       />
 
       <EditSquare

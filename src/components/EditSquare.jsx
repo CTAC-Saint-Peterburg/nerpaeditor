@@ -21,6 +21,7 @@ export const EditSquare = ({ filledSquares, setFilledSquares }) => {
   const [height, setHeight] = useState(1);
   const [x, setX] = useState(0);
   const [y, setY] = useState(0);
+  const [type, setType] = useState("");
 
   // Обработчик выбора квадрата
   const handleSquareSelect = (event) => {
@@ -34,6 +35,7 @@ export const EditSquare = ({ filledSquares, setFilledSquares }) => {
       setHeight(square.size.height || square.size);
       setX(square.x);
       setY(square.y);
+      setType(square.type || "");
     } else {
       setSelectedSquare(null);
       setName("");
@@ -42,6 +44,7 @@ export const EditSquare = ({ filledSquares, setFilledSquares }) => {
       setHeight(1);
       setX(0);
       setY(0);
+      setType("");
     }
   };
 
@@ -57,6 +60,7 @@ export const EditSquare = ({ filledSquares, setFilledSquares }) => {
               size: { width, height },
               x,
               y,
+              type,
             }
           : square
       );
@@ -100,6 +104,13 @@ export const EditSquare = ({ filledSquares, setFilledSquares }) => {
                 label="Имя квадрата"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                fullWidth
+                sx={{ marginBottom: 2 }}
+              />
+              <TextField
+                label="Тип квадрата"
+                value={type}
+                onChange={(e) => setType(e.target.value)}
                 fullWidth
                 sx={{ marginBottom: 2 }}
               />

@@ -34,6 +34,11 @@ export const CreateSquare = (props) => {
     name,
     setName,
     isCustomMode,
+    type,
+    setType,
+    customColor,
+    setCustomColor,
+    handleApplyCustomColor
   } = props;
   return (<Box
     sx={{
@@ -103,6 +108,15 @@ export const CreateSquare = (props) => {
             Кастом
           </Button>
         </ButtonGroup>
+
+        <Box sx={{ marginTop: 2 }}>
+            <TextField
+              label="Тип квадрата"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              fullWidth
+            />
+          </Box>
 
         {isCustomMode && (
           <Box sx={{ marginTop: 2 }}>
